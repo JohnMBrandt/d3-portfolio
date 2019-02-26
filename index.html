@@ -100,9 +100,9 @@
     }
 
     var dataset;
-    var w = 700
-    var h = 500
-    var padding = 50
+    var w = 600
+    var h = 450
+    var padding = 30
 
     // Create empty SVG elements for each of the three visualizations
     var svg = d3.select("body").select("#Plot1")
@@ -128,7 +128,7 @@
     makeTitle(svg, "Age of research by field", "Mouseover lines to filter")
     makeTitle(svg2, "Age of receiving prize by field", "Mouseover points to filter")
     makeTitle(svg3, "Years of experience before \n conducting prize-winning research by age of highest degree", "Mouseover lines to filter")
-    makeTitle(svg4, "Age at prize vs research by gender", "Mousevoer points to filter")
+    makeTitle(svg4, "Age at prize vs research by gender", "Mouseover points to filter")
 
     // Load in data
     d3.csv("data/Jones_Weinberg_2011_PNAS.csv", function(d) {
