@@ -131,7 +131,7 @@
     makeTitle(svg4, "Age at prize vs research by gender", "Mousevoer points to filter")
 
     // Load in data
-    d3.csv("Jones_Weinberg_2011_PNAS.csv", function(d) {
+    d3.csv("data/Jones_Weinberg_2011_PNAS.csv", function(d) {
         dataset = d;
         dataset.forEach(function(d) {
             d.year_birth = parseInt(d.year_birth)
