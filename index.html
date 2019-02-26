@@ -6,25 +6,24 @@
     <title>D3 Page Template</title>
     <script type="text/javascript" src="d3.js"></script>
     <style type="text/css">
-
     .grid-container {
-      display: grid;
-      grid-template-columns: auto auto;
-      padding: 10px;
+        display: grid;
+        grid-template-columns: auto auto;
+        padding: 5px;
     }
 
     .grid-item {
-      padding: 20px;
+        padding: 5px;
     }
     </style>
 </head>
 
 <body>
-    <div class = "grid-container">
-        <div class = 'grid-item' id="Plot1"></div>
-        <div class = 'grid-item' id="Plot2"></div>
-        <div class = 'grid-item' id="Plot3"></div>
-        <div class = 'grid-item' id='Plot4'></div>
+    <div class="grid-container">
+        <div class='grid-item' id="Plot1"></div>
+        <div class='grid-item' id="Plot2"></div>
+        <div class='grid-item' id="Plot3"></div>
+        <div class='grid-item' id='Plot4'></div>
     </div>
     <script type="text/javascript">
     function groupBy(objectArray, property) {
@@ -53,7 +52,7 @@
         return result
     }
 
-    function makeLegend(svg, data, colorfunc, yoffset = h/2) {
+    function makeLegend(svg, data, colorfunc, yoffset = h / 2) {
         // Create legend
         var legend = svg.append("g")
             .selectAll("g")
@@ -81,9 +80,28 @@
         return legend
     }
 
+    function makeTitle(svg, name, subtitle) {
+        svg.append("text")
+            .attr("transform", "translate(" + padding + "," + 25 + ")")
+            .attr("dy", "0em")
+            .attr("font-size", "1em")
+            .style("text-anchor", "left")
+            .style("font-family", "sans-serif")
+            .text(name);
+
+        svg.append("text")
+            .attr("transform", "translate(" + padding + "," + 25 + ")")
+            .attr("dy", "1.2em")
+            .attr("font-size", "0.7em")
+            .style("text-anchor", "left")
+            .style("opacity", 0.7)
+            .style("font-family", "sans-serif")
+            .text(subtitle);
+    }
+
     var dataset;
-    var w = 600
-    var h = 400
+    var w = 700
+    var h = 500
     var padding = 50
 
     // Create empty SVG elements for each of the three visualizations
@@ -100,15 +118,20 @@
         svg3 = d3.select("body").select("#Plot3")
         .append("svg")
         .attr("width", w)
-        .attr("height", h)
+        .attr("height", h),
 
-    svg4 = d3.select("body").select("#Plot4")
+        svg4 = d3.select("body").select("#Plot4")
         .append("svg")
         .attr("width", w)
         .attr("height", h)
 
+    makeTitle(svg, "Age of research by field", "Mouseover lines to filter")
+    makeTitle(svg2, "Age of receiving prize by field", "Mouseover points to filter")
+    makeTitle(svg3, "Years of experience before \n conducting prize-winning research by age of highest degree", "Mouseover lines to filter")
+    makeTitle(svg4, "Age at prize vs research by gender", "Mousevoer points to filter")
+
     // Load in data
-    d3.csv("https://raw.githubusercontent.com/JohnMBrandt/d3-portfolio/master/data/Jones_Weinberg_2011_PNAS.csv", function(d) {
+    d3.csv("Jones_Weinberg_2011_PNAS.csv", function(d) {
         dataset = d;
         dataset.forEach(function(d) {
             d.year_birth = parseInt(d.year_birth)
@@ -165,50 +188,51 @@
             .scale(yScale)
 
         fieldColor = function(d) {
-                if (d.key == "Chemistry") { return "#fc8d59" }
-                if (d.key == "Physics") { return "#7fcdbb" }
-                if (d.key == "Medicine") { return "#2c7fb8" }
+            if (d.key == "Chemistry") { return "#fc8d59" }
+            if (d.key == "Physics") { return "#7fcdbb" }
+            if (d.key == "Medicine") { return "#2c7fb8" }
         }
 
         fieldLegend = function(d) {
-                if (d == "Chemistry") { return "#fc8d59" }
-                if (d == "Physics") { return "#7fcdbb" }
-                if (d == "Medicine") { return "#2c7fb8" }
+            if (d == "Chemistry") { return "#fc8d59" }
+            if (d == "Physics") { return "#7fcdbb" }
+            if (d == "Medicine") { return "#2c7fb8" }
         }
 
         ageLegend = function(d) {
-                if (d == "Under 23") { return "#fc8d59" }
-                if (d == "Under 30") { return "#7fcdbb" }
-                if (d == "Over 30") { return "#2c7fb8" }
+            if (d == "Under 23") { return "#fc8d59" }
+            if (d == "Under 30") { return "#7fcdbb" }
+            if (d == "Over 30") { return "#2c7fb8" }
         }
 
         ageColor = function(d) {
-                if (d.key == "Under 23") { return "#fc8d59" }
-                if (d.key == "Under 30") { return "#7fcdbb" }
-                if (d.key == "Over 30") { return "#2c7fb8" }
+            if (d.key == "Under 23") { return "#fc8d59" }
+            if (d.key == "Under 30") { return "#7fcdbb" }
+            if (d.key == "Over 30") { return "#2c7fb8" }
         }
 
         genderLegend = function(d) {
-                if (d == "Female") { return "#fc8d59" }
-                if (d == "Male") { return "#2c7fb8" }
+            if (d == "Female") { return "#fc8d59" }
+            if (d == "Male") { return "#2c7fb8" }
         }
 
 
         var plot1legend = makeLegend(svg, ['Chemistry', 'Physics', 'Medicine'], fieldLegend)
+
         // Create the line charts - age of research
         var decade = svg.selectAll(".line")
             .data(nested)
             .enter()
             .append("path")
             .attr("class", "line1")
-            .attr('d', function(d) {return line(d.values) })
+            .attr('d', function(d) { return line(d.values) })
             .attr("fill", "none")
             .attr("stroke-width", '5px')
             .attr("stroke", fieldColor)
             .on("mouseover", function(d) {
 
                 svg.selectAll(".line1")
-                    .filter(function(ln) {return d.key != ln.key})
+                    .filter(function(ln) { return d.key != ln.key })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
@@ -226,25 +250,25 @@
                     .style("opacity", 0.2)
 
                 svg2.selectAll(".legend-rect")
-                    .filter(function(dot) {console.log(dot); return d.key != dot})
+                    .filter(function(dot) { return d.key != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg.selectAll(".legend-rect")
-                    .filter(function(dot) {return d.key != dot})
+                    .filter(function(dot) { return d.key != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg2.selectAll(".legend-text")
-                    .filter(function(dot) {console.log(dot); return d.key != dot})
+                    .filter(function(dot) { return d.key != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg.selectAll(".legend-text")
-                    .filter(function(dot) {return d.key != dot})
+                    .filter(function(dot) { return d.key != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
@@ -296,7 +320,7 @@
             .text("Average age of research");
 
         svg.append("text")
-            .attr("transform", "translate(" + (w/2) + "," + (h - 25) + ")")
+            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
             .attr("dy", "1em")
             .style("text-anchor", "middle")
             .style("font-family", "sans-serif")
@@ -340,7 +364,7 @@
             })
             .on("mouseover", function(d) {
                 svg.selectAll(".line1")
-                    .filter(function(ln) {return d.field != ln.key})
+                    .filter(function(ln) { return d.field != ln.key })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
@@ -356,30 +380,30 @@
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
-                    
+
 
 
                 svg2.selectAll(".legend-rect")
-                    .filter(function(dot) {return d.field != dot})
+                    .filter(function(dot) { return d.field != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg.selectAll(".legend-rect")
-                    .filter(function(dot) {return d.field != dot})
+                    .filter(function(dot) { return d.field != dot })
                     .transition()
                     .duration(100)
                     .style("opacity", 0.2)
-         
+
 
                 svg2.selectAll(".legend-text")
-                    .filter(function(dot) {return d.field != dot})
+                    .filter(function(dot) { return d.field != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg.selectAll(".legend-text")
-                    .filter(function(dot) {return d.field != dot})
+                    .filter(function(dot) { return d.field != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
@@ -432,7 +456,7 @@
             .text("Age at receiving prize");
 
         svg2.append("text")
-            .attr("transform", "translate(" + (w/2) + "," + (h - 25) + ")")
+            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
             .attr("dy", "1em")
             .style("text-anchor", "middle")
             .style("font-family", "sans-serif")
@@ -471,18 +495,18 @@
             })
             .on("mouseover", function(d) {
                 svg3.selectAll(".line")
-                    .filter(function(line) { return d.key != line.key})
+                    .filter(function(line) { return d.key != line.key })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 d3.selectAll("circle")
-                    .filter(function(dot) {return d.key != dot.age_group })
+                    .filter(function(dot) { return d.key != dot.age_group })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
             })
-            .on("mouseout", function(d) { 
+            .on("mouseout", function(d) {
                 d3.selectAll(".line")
                     .transition()
                     .duration(200)
@@ -518,7 +542,7 @@
             .text("Years of post-education experience");
 
         svg3.append("text")
-            .attr("transform", "translate(" + (w/2) + "," + (h - 25) + ")")
+            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
             .attr("dy", "1em")
             .style("text-anchor", "middle")
             .style("font-family", "sans-serif")
@@ -570,13 +594,13 @@
             .text("Age at receiving prize");
 
         svg4.append("text")
-            .attr("transform", "translate(" + (w/2) + "," + (h - 25) + ")")
+            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
             .attr("dy", "1em")
             .style("text-anchor", "middle")
             .style("font-family", "sans-serif")
             .text("Age at conducting research");
 
-         svg4.selectAll("circle")
+        svg4.selectAll("circle")
             .data(dataset)
             .enter()
             .append("circle")
@@ -589,30 +613,30 @@
             })
             .on("mouseover", function(d) {
                 svg4.selectAll("circle")
-                    .filter(function(dot) {return d.gender != dot.gender })
+                    .filter(function(dot) { return d.gender != dot.gender })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg2.selectAll("circle")
-                    .filter(function(dot) {return d.gender != dot.gender })
+                    .filter(function(dot) { return d.gender != dot.gender })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg4.selectAll(".legend-rect")
-                    .filter(function(dot) {return d.gender != dot})
+                    .filter(function(dot) { return d.gender != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
                 svg4.selectAll(".legend-text")
-                    .filter(function(dot) {return d.gender != dot})
+                    .filter(function(dot) { return d.gender != dot })
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
 
-                    
+
             })
             .on("mouseout", function(d) {
                 d3.selectAll("circle")
@@ -630,7 +654,7 @@
                     .transition()
                     .duration(200)
                     .style("opacity", 1)
-                    
+
             })
     })
     </script>
