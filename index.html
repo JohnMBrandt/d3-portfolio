@@ -9,11 +9,11 @@
     .grid-container {
         display: grid;
         grid-template-columns: auto auto;
-        padding: 0px;
+        padding: 5px;
     }
 
     .grid-item {
-        padding: 0px;
+        padding: 5px;
     }
     </style>
 </head>
@@ -26,36 +26,75 @@
         <div class='grid-item' id='Plot4'></div>
     </div>
     <script type="text/javascript">
-    function groupBy(objectArray, property) {
-        return objectArray.reduce(function(acc, obj) {
-            var key = obj[property];
-            if (!acc[key]) {
-                acc[key] = [];
-            }
-            acc[key].push(obj);
-            return acc;
-        }, {});
+    var w = 750;
+    var h = 500;
+    var padding = 40;
+
+    function makeTitle(svg, name, subtitle) {
+        svg.append("text")
+            .attr("transform", "translate(" + padding + "," + 25 + ")")
+            .attr("dy", "0em")
+            .attr("font-size", "1.2em")
+            .style("text-anchor", "left")
+            .style("font-family", "sans-serif")
+            .text(name);
+
+        svg.append("text")
+            .attr("transform", "translate(" + padding + "," + 25 + ")")
+            .attr("dy", "1.4em")
+            .attr("font-size", "0.9em")
+            .style("text-anchor", "left")
+            .style("opacity", 0.7)
+            .style("font-family", "sans-serif")
+            .text(subtitle);
     }
 
-    function groupCount(data, field1, field2, value) {
-        result = []
-        data.forEach(function(d) {
-            var key = d[field1] + "|" + d[field2]
-            if (!this[key]) {
-                this[key] = { decade: d[field1], field: d[field2], count: 0, sum: 0, mean: 0 }
-                result.push(this[key])
-            }
-            this[key].count += 1
-            this[key].sum += d[value]
-            this[key].mean = this[key].sum / this[key].count
-        }, Object.create(null));
-        return result
+    function makeAxisTitles(svg, yaxis, xaxis) {
+        svg.append("text")
+            .attr("transform", "translate(" + (padding / 5) + ", " + (h / 2) + ") rotate(-90)")
+            .attr("dy", "1em")
+            .style("font-size", "1.2em")
+            .style("text-anchor", "middle")
+            .style("font-family", "sans-serif")
+            .text(yaxis);
+
+        svg.append("text")
+            .attr("transform", "translate(" + (w / 2) + "," + (h - padding/2) + ")")
+            .attr("dy", "1em")
+            .attr("class", "x-axis-title")
+            .attr("font-size", "1.2em")
+            .style("text-anchor", "middle")
+            .style("font-family", "sans-serif")
+            .text(xaxis);
     }
 
-    function makeLegend(svg, data, colorfunc, yoffset = h / 2) {
+    // Create the color function, and generate data for legends
+    colorlegend = [20e3, 40e3, 60e3, 80e3, 100e3]
+    var color = d3.scaleSequential(d3.interpolateViridis)
+        .domain([0, 120000]);
+
+
+    var income_yScale = d3.scaleLinear()
+        .domain([0, 120000])
+        .range([h - padding, 0 + padding])
+
+    var income_yAxis = d3.axisLeft()
+        .scale(income_yScale)
+
+    function makeXscale(data, name) {
+        var min = d3.min(data.features, function(d) { return d.properties[name]; })
+        var max = d3.max(data.features, function(d) { return d.properties[name]; })
+        var xScale = d3.scaleLinear()
+            .domain([min, max])
+            .range([0 + padding + 40, w - padding])
+
+        return xScale
+    }
+
+    // Function to make legend for chloropleth
+    function makeLegend(svg, data, colorfunc, yoffset = (h / 2) - 100) {
         // Create legend
-        var legend = svg.append("g")
-            .selectAll("g")
+        var legend = svg.selectAll("g")
             .data(data)
             .enter()
             .append("g")
@@ -63,48 +102,26 @@
 
         legend.append("rect")
             .attr("class", "legend-rect")
-            .attr("x", w - 19)
+            .attr("x", w - 150)
             .attr("width", 19)
             .attr("height", 19)
-            .attr("fill", colorfunc)
+            .attr("fill", function(d) { return color(d) })
 
         legend.append("text")
             .attr("class", "legend-text")
-            .attr("x", w + 5)
+            .attr("x", w - 100)
             .attr("font-family", "sans-serif")
             .attr("y", 9.5)
             .attr("dy", "0.4em")
             .attr("font-size", "0.8em")
-            .text(function(d) { return d; })
+            .text(function(d) { return formatAsThousands(d); })
 
         return legend
     }
 
-    function makeTitle(svg, name, subtitle) {
-        svg.append("text")
-            .attr("transform", "translate(" + padding + "," + 25 + ")")
-            .attr("dy", "0em")
-            .attr("font-size", "1em")
-            .style("text-anchor", "left")
-            .style("font-family", "sans-serif")
-            .text(name);
+    var formatAsThousands = d3.format(","); //e.g. converts 123456 to "123,456"
 
-        svg.append("text")
-            .attr("transform", "translate(" + padding + "," + 25 + ")")
-            .attr("dy", "1.2em")
-            .attr("font-size", "0.7em")
-            .style("text-anchor", "left")
-            .style("opacity", 0.7)
-            .style("font-family", "sans-serif")
-            .text(subtitle);
-    }
-
-    var dataset;
-    var w = 620
-    var h = 420
-    var padding = 50
-
-    // Create empty SVG elements for each of the three visualizations
+    //Create SVG element
     var svg = d3.select("body").select("#Plot1")
         .append("svg")
         .attr("width", w)
@@ -125,538 +142,536 @@
         .attr("width", w)
         .attr("height", h)
 
-    makeTitle(svg, "Age of research by field", "Mouseover lines to filter")
-    makeTitle(svg2, "Age of receiving prize by field", "Mouseover points to filter")
-    makeTitle(svg3, "Years of experience before \n conducting prize-winning research by age of degree", "Mouseover lines to filter")
-    makeTitle(svg4, "Age at prize vs research by gender", "Mouseover points to filter")
+    svg3.append("g")
+        .attr("class", "y-axis")
+        .style("font-family", "sans-serif")
+        .style("font-size", "0.75em")
+        .attr("transform", "translate(" + (padding + 40) + "," + 0 + ")")
+        .call(income_yAxis)
 
-    // Load in data
-    d3.csv("data/Jones_Weinberg_2011_PNAS.csv", function(d) {
-        dataset = d;
-        dataset.forEach(function(d) {
-            d.year_birth = parseInt(d.year_birth)
-            d.year_prize = parseInt(d.year_prize)
-            d.year_research_mid = parseInt(d.year_research_mid)
-            d.year_death = parseInt(d.year_death)
-            d.age_research = d.year_research_mid - d.year_birth
-            d.age_highdegree = parseInt(d.age_highdegree)
-            d.decade_research = Math.ceil(d.year_research_mid / 10) * 10
-            d.decade_age = Math.ceil(d.age_research / 10) * 10
-            d.professional_exp = d.age_research - d.age_highdegree
-            d.decade_born = Math.ceil(d.year_birth / 10) * 10
-            d.age_prize = d.year_prize - d.year_birth
-            d.age_group = 'Over 30'
-            if (d.age_highdegree <= 30) { d.age_group = 'Under 30' }
-            if (d.age_highdegree <= 23) { d.age_group = 'Under 23' }
-            d.gender = 'Male'
-            if (d.female == 1) {
-                d.gender = 'Female'
-            }
+    // Make legends
+    makeLegend(svg, colorlegend, color)
+    svg.append("text")
+        .attr("transform", "translate(" + (w - 255) + "," + ((h / 2) - 90) + ")")
+        .style("font-family", "sans-serif")
+        .text("Income (USD)")
 
+    makeTitle(svg, "Environmental and social inclusion in Chicago",
+        "Data 2015-2018")
+    makeTitle(svg2, "Neighborhood attributes", "Click attribute name to filter data")
+
+    makeAxisTitles(svg3, "Income", "PM25")
+    makeAxisTitles(svg4, "Population", "PM25")
+
+
+    d3.json("data/chicago.geojson", function(json) {
+        console.log(json.features[0].properties)
+
+        var path = d3.geoPath()
+            .projection(d3.geoAlbers()
+                .fitSize([w - 50, h - 50], json))
+
+        //Bind data and create one path per GeoJSON feature
+        var geos = svg.selectAll("path")
+            .data(json.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("transform", "translate(-50,50)")
+            .style("fill", function(d) {
+                //Get data value
+                var value = d.properties.income;
+                if (value) {
+                    return color(value);
+                } else {
+                    return "#ccc";
+                }
+            });
+
+        geos.on("mouseover", function(d) {
+            d3.select(this)
+                .transition()
+                .duration(300)
+                .style("fill", "orange")
+
+
+            svg3.selectAll("circle")
+                .transition()
+                .duration(200)
+                .filter(function(l) { return d.properties.nbhd == l.properties.nbhd})
+                .style("fill", "orange")
+                .attr("r", 10)
+
+            svg4.selectAll("circle")
+                .transition()
+                .duration(200)
+                .filter(function(l) { return d.properties.nbhd == l.properties.nbhd})
+                .style("fill", "orange")
+                .attr("r", 10)
+
+            var update_data = calc_data(d.properties)
+            update_poly = []
+            update_data.forEach(function(d, i) { 
+                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x += (h/2 + padding*3.1 - (radius *d))
+                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y += (h/2 + padding - (radius * d))
+                update_poly.push({ 'x' : x, 'y': y})
+            })
+            svg2.selectAll("circle")
+                .data(update_data)
+                .transition()
+                .duration(200)
+                .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
+                .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
+                .attr("r", 5)
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("fill", "black")
+                .attr("opacity", "0.8")
+
+            svg2.selectAll("polygon")
+                .data([update_poly])
+                .transition()
+                .duration(200)
+                .style("stroke", "black")
+                .style('fill', "gray")
+                .attr("points",function(l) { 
+                    return l.map(function(l) {
+                        return [l.x, l.y].join(",");
+                    }).join(" ")
+                })
+                .attr("opacity", 0.5)
         })
 
-        // Group data by decade and calculate the mean age of research by field
-        var result = groupCount(dataset, 'decade_research', 'field', 'age_research')
-        result = result.sort(function(a, b) { return d3.ascending(a.decade, b.decade); })
+        geos.on("mouseout", function(d) {
+            d3.select(this)
+                .transition()
+                .duration(300)
+                .style("fill", function(d) {
+                    //Get data value
+                    var value = d.properties.income;
+                    if (value) {
+                        //If value exists…
+                        return color(value);
+                    } else {
+                        //If value is undefined…
+                        return "#ccc";
+                    }
+                })
 
-        // Nest data for use with d3.line()
-        var nested = d3.nest()
-            .key(function(d) { return d.field })
-            .entries(result),
-
-            line = d3.line()
-            .x(function(d) { return xScale(d.decade) })
-            .y(function(d) { return yScale(+d.mean) })
+            svg3.selectAll("circle").style("fill", "gray").attr("r", 5)
+            svg4.selectAll("circle").style("fill", "gray").attr("r", 5)
+        })
 
 
-        // Create X and Y scaling functions and axes
-        var xScale = d3.scaleLinear()
-            .domain([d3.min(result, function(d) { return d.decade }),
-                d3.max(result, function(d) { return d.decade })
-            ])
-            .range([0 + padding, w - padding]),
+        // **********************************
+        // ******** SECOND PLOT**************
+        // **********************************
 
-            xAxis = d3.axisBottom()
-            .scale(xScale)
-            .ticks(10),
-
-            yScale = d3.scaleLinear()
-            .domain([0, d3.max(result, function(d) { return d.mean })])
-            .range([h - padding, 0 + padding]),
-
-            yAxis = d3.axisLeft()
-            .scale(yScale)
-
-        fieldColor = function(d) {
-            if (d.key == "Chemistry") { return "#fc8d59" }
-            if (d.key == "Physics") { return "#7fcdbb" }
-            if (d.key == "Medicine") { return "#2c7fb8" }
-        }
-
-        fieldLegend = function(d) {
-            if (d == "Chemistry") { return "#fc8d59" }
-            if (d == "Physics") { return "#7fcdbb" }
-            if (d == "Medicine") { return "#2c7fb8" }
-        }
-
-        ageLegend = function(d) {
-            if (d == "Under 23") { return "#fc8d59" }
-            if (d == "Under 30") { return "#7fcdbb" }
-            if (d == "Over 30") { return "#2c7fb8" }
-        }
-
-        ageColor = function(d) {
-            if (d.key == "Under 23") { return "#fc8d59" }
-            if (d.key == "Under 30") { return "#7fcdbb" }
-            if (d.key == "Over 30") { return "#2c7fb8" }
-        }
-
-        genderLegend = function(d) {
-            if (d == "Female") { return "#fc8d59" }
-            if (d == "Male") { return "#2c7fb8" }
+        function calc_data(d) {
+            popmax = 11e4
+            incomemax = 1e5
+            PM25max = 14
+            NO2max = 7
+            TREECOVmax = 10e6
+            data = [d.population/popmax,
+                    d.income/incomemax,
+                    d.NO2/NO2max, d.PM25/PM25max, 
+                    d.TREECOV/TREECOVmax]
+            return data
         }
 
 
-        var plot1legend = makeLegend(svg, ['Chemistry', 'Physics', 'Medicine'], fieldLegend)
+        var sample_data = calc_data(json.features[3].properties)
+        var alldata = [1, 1, 1, 1, 1, 1]
+        var total = sample_data.length;
+        var radius = h/2
+        var radians = 2 * Math.PI
 
-        // Create the line charts - age of research
-        var decade = svg.selectAll(".line")
-            .data(nested)
+        function calc_xy(value, i) {
+            x = (h/2 * value) * (1 - Math.sin(i * (2*Math.PI) / 5))
+            y = (h/2 * value) * (1 - Math.cos(i * (2*Math.PI) / 5))
+            return [x, y]
+        }
+
+        polygonValues = []
+        sample_data.forEach(function(d, i) { 
+            x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+            x += (h/2 + padding*3.1 - (radius *d))
+            y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+            y += (h/2 + padding - (radius * d))
+            polygonValues.push({ 'x' : x, 'y': y})
+        })
+
+
+        var radarAxis = svg2.selectAll(".axis")
+            .data(sample_data)
             .enter()
-            .append("path")
-            .attr("class", "line1")
-            .attr('d', function(d) { return line(d.values) })
-            .attr("fill", "none")
-            .attr("stroke-width", '5px')
-            .attr("stroke", fieldColor)
-            .on("mouseover", function(d) {
+            .append("g")
+            .attr("transform", "translate(" + ((w - h) / 2) + "," + (padding) + ")")
+            .attr("class", "axis")
 
-                svg.selectAll(".line1")
-                    .filter(function(ln) { return d.key != ln.key })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+        radarAxis.append("line")
+            .attr("x1", h/2)
+            .attr("y1", h/2)
+            .attr("x2", function(d, i) { return h / 2 * (1 - Math.sin(i * radians/ total))})
+            .attr("y2", function(d, i) { return h / 2 * (1 - Math.cos(i * radians / total))})
+            .attr("class", "line")
+            .style("stroke", "grey")
 
-                svg2.selectAll("circle")
-                    .filter(function(dot) { return d.key != dot.field })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+        for(var l = 0; l < 3; l ++) {
+            radarAxis.selectAll(".line")
+                .data(alldata)
+                .enter()
+                .append("line")
+                .attr("x1", function(d, i) { return (  (radius *(l + 1) / 3) * (1 - Math.sin(i * radians / total))  )}  )
+                .attr("x2", function(d, i) { return (  (radius *(l + 1) / 3) * (1 - Math.sin((i + 1) * radians / total)) )} )
+                .attr("y1", function(d, i) { return (  (radius *(l + 1) / 3) * (1 - Math.cos(i * radians / total)) )} )
+                .attr("y2", function(d, i) { return (  (radius *(l + 1) / 3) * (1 - Math.cos((i + 1) * radians / total))  )} )
+                .style("stroke", "gray")
+                .style("stroke-opacity", 0.05)
+                .attr("transform", "translate(" + (h/2 - (radius * (l + 1) / 3)) + "," + (h/2 - (radius * (l + 1) / 3)) + ")")
+        }
 
-                svg4.selectAll("circle")
-                    .filter(function(dot) { return d.key != dot.field })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                svg2.selectAll(".legend-rect")
-                    .filter(function(dot) { return d.key != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                svg.selectAll(".legend-rect")
-                    .filter(function(dot) { return d.key != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                svg2.selectAll(".legend-text")
-                    .filter(function(dot) { return d.key != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                svg.selectAll(".legend-text")
-                    .filter(function(dot) { return d.key != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+        svg2.selectAll("polygon")
+            .data([polygonValues])
+            .enter()
+            .append("polygon")
+            .style("stroke", "black")
+            .style('fill', "gray")
+            .attr("points",function(d) { 
+                return d.map(function(d) {
+                    return [d.x, d.y].join(",");
+                }).join(" ")
             })
-            .on("mouseout", function(d) {
-                d3.selectAll(".legend-rect")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-
-
-                d3.selectAll(".legend-text")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-
-                svg.selectAll(".line1")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-
-                d3.selectAll("circle")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-            });
-
-        // Append X axis
-        svg.append("g")
-            .attr("class", "x axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(0," + (h - padding) + ")")
-            .call(xAxis)
-
-        // Append Y Axis
-        svg.append("g")
-            .attr("class", "y axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(" + (padding) + ",0)")
-            .call(yAxis)
-
-        svg.append("text")
-            .attr("transform", "translate(0, " + (h / 2) + ") rotate(-90)")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Average age of research");
-
-        svg.append("text")
-            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Year");
-
-        // ###################
-        // ##### PLOT 2 ######
-        // ###################
-
-        var xScale_prize = d3.scaleLinear()
-            .domain([d3.min(dataset, function(d) { return d.year_prize }),
-                d3.max(dataset, function(d) { return d.year_prize })
-            ])
-            .range([0 + padding, w - padding]),
-
-            xAxis_prize = d3.axisBottom()
-            .scale(xScale)
-            .ticks(10),
-
-
-            yScale_prize = d3.scaleLinear()
-            .domain([0, d3.max(dataset, function(d) { return (d.age_prize) })])
-            .range([h - padding, 0 + padding]),
-
-            yAxis_prize = d3.axisLeft()
-            .scale(yScale_prize)
-
-        var plot2legend = makeLegend(svg2, ['Chemistry', 'Physics', 'Medicine'], fieldLegend)
+            .attr("opacity", 0.5)
 
         svg2.selectAll("circle")
-            .data(dataset)
+            .data(sample_data)
             .enter()
             .append("circle")
-            .attr("cx", function(d) { return xScale_prize(d.year_prize) })
-            .attr("cy", function(d) { return yScale_prize(d.age_prize) })
-            .attr("r", 3)
-            .attr("fill", function(d) {
-                if (d.field == "Chemistry") { return "#fc8d59" }
-                if (d.field == "Physics") { return "#7fcdbb" }
-                if (d.field == "Medicine") { return "#2c7fb8" }
-            })
-            .on("mouseover", function(d) {
-                svg.selectAll(".line1")
-                    .filter(function(ln) { return d.field != ln.key })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+            .attr("cx", function(d, i) { return ( (radius * d) * (1 - Math.sin(i * radians / total)) )})
+            .attr("cy", function(d, i) { return ( (radius * d) * (1 - Math.cos(i * radians / total)) )})
+            .attr("r", 5)
+            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*3.1 - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
+            .attr("fill", "black")
+            .attr("opacity", "0.8")
 
-                svg2.selectAll("circle")
-                    .filter(function(dot) { return d.field != dot.field })
+        spider_text = svg2.selectAll(".label-text")
+            .data(['Population', 'Income', 'NO2', 'PM2.5', 'Tree cover'])
+            .enter()
+            .append("text")
+            .attr("class", "label-text")
+            .attr("x", function(d, i) { return ( radius * (1 - Math.sin(i * radians / total)) )})
+            .attr("y", function(d, i) { return ( radius * (1 - Math.cos(i * radians / total)) )})
+            .attr("transform", "translate(" + (h/2 + padding*3.3 - (radius)) + "," + (h/2 + padding - (radius)) + ")")
+            .text(function(d) { return d})
+            .style("font-family", "sans-serif")
+            .style("font-weight", function(d) { return d == 'PM2.5' ? "bold" : ""})
+            .attr("font-size", function(d) { return d == 'PM2.5' ? "1.2em" : "1em"})
+            .style("fill", function(d, i) {
+                return d == 'PM2.5' ? "orange" : "black"
+            })
+
+        spider_text.on("click", function(d) {
+                console.log(d)
+
+            spider_text.transition().duration(125).style("fill", function(l, i) {return l == d ? "orange" : "black"})
+            .style("font-weight", function(l) { return l == d ? "bold" : ""})
+            .attr("font-size", function(l) { return l == d ? "1.5em" : "1em"})
+
+            if(d == "NO2") {
+                var xScale_update = makeXscale(json, 'NO2')
+                svg3.selectAll("circle")
+                    .data(json.features)
                     .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.NO2) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
+
+                svg3.selectAll(".x-axis-title")
+                .text("NO2")
+
+                svg3.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
 
                 svg4.selectAll("circle")
-                    .filter(function(dot) { return d.field != dot.field })
+                    .data(json.features)
                     .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.NO2) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
 
+                svg4.selectAll(".x-axis-title")
+                .text("NO2")
 
-
-                svg2.selectAll(".legend-rect")
-                    .filter(function(dot) { return d.field != dot })
+                svg4.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+            } else if (d == "Tree cover") {
+                var xScale_update = makeXscale(json, 'TREECOV')
+                svg3.selectAll("circle")
+                    .data(json.features)
                     .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.TREECOV) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
 
-                svg.selectAll(".legend-rect")
-                    .filter(function(dot) { return d.field != dot })
+                svg3.selectAll(".x-axis-title")
+                .text("Tree cover")
+
+                svg3.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+                svg4.selectAll("circle")
+                    .data(json.features)
                     .transition()
-                    .duration(100)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.TREECOV) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
 
+                svg4.selectAll(".x-axis-title")
+                .text("Tree cover")
 
-                svg2.selectAll(".legend-text")
-                    .filter(function(dot) { return d.field != dot })
+                svg4.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+            } else if (d == "PM2.5") {
+                var xScale_update = makeXscale(json, 'PM25')
+                svg3.selectAll("circle")
+                    .data(json.features)
                     .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.PM25) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
 
-                svg.selectAll(".legend-text")
-                    .filter(function(dot) { return d.field != dot })
+                svg3.selectAll(".x-axis-title")
+                .text("PM2.5")
+
+                svg3.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+                svg4.selectAll("circle")
+                    .data(json.features)
                     .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.PM25) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
 
-            })
-            .on("mouseout", function(d) {
-                d3.selectAll("circle")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+                svg4.selectAll(".x-axis-title")
+                .text("PM2.5")
 
-                d3.selectAll(".legend-rect")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+                svg4.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+            }})
 
-                d3.selectAll(".legend-text")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+    
+        // **********************************
+        // ******** THIRD PLOT **************
+        // **********************************
 
-                svg.selectAll(".line1")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-
-                //d3.select("#tooltip").classed("hidden", true);
-            });
-
-
-        svg2.append("g")
-            .attr("class", "x axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(0," + (h - padding) + ")")
-            .call(xAxis_prize)
-
-        svg2.append("g")
-            .attr("class", "y axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(" + (padding) + ",0)")
-            .call(yAxis_prize)
-
-        svg2.append("text")
-            .attr("transform", "translate(0, " + (h / 2) + ") rotate(-90)")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Age at receiving prize");
-
-        svg2.append("text")
-            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Year");
-
-
-
-        // PLOT 3
-
-        degree_group = groupCount(dataset, 'decade_research', 'age_group', 'professional_exp')
-        degree_group = degree_group.sort(function(a, b) { return d3.ascending(a.decade, b.decade); })
-
-        var nested_degree = d3.nest()
-            .key(function(d) { return d.field })
-            .entries(degree_group),
-
-            line_degree = d3.line()
-            .x(function(d) { return xScale(d.decade) })
-            .y(function(d) { return yScale(+d.mean) })
-
-        var plot3legend = makeLegend(svg3, ['Under 23', 'Under 30', 'Over 30'], ageLegend, yoffset = 50)
-
-        var decade_degree = svg3.selectAll(".line")
-            .data(nested_degree)
-            .enter()
-            .append("path")
-            .attr("class", "line")
-            .attr('d', function(d) { return line(d.values) })
-            .attr("fill", "none")
-            .attr("stroke", "black")
-            .attr("stroke-width", '5px')
-            .attr("stroke", function(d) {
-                if (d.key == "Under 23") { return "#fc8d59" }
-                if (d.key == "Under 30") { return "#7fcdbb" }
-                if (d.key == "Over 30") { return "#2c7fb8" }
-            })
-            .on("mouseover", function(d) {
-                svg3.selectAll(".line")
-                    .filter(function(line) { return d.key != line.key })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                d3.selectAll("circle")
-                    .filter(function(dot) { return d.key != dot.age_group })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-            })
-            .on("mouseout", function(d) {
-                d3.selectAll(".line")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-
-                d3.selectAll("circle")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-            })
-
+        var xScale = makeXscale(json, 'PM25')
 
         svg3.append("g")
-            .attr("class", "x axis")
+            .attr("class", "x-axis")
             .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(0," + (h - padding) + ")")
-            .call(xAxis)
+            .style("font-size", "0.75em")
+            .attr("transform", "translate(" + (0) + "," + (h - padding) + ")")
+            .call(d3.axisBottom().scale(xScale))
 
-        // Append Y Axis
-        svg3.append("g")
-            .attr("class", "y axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(" + (padding) + ",0)")
-            .call(yAxis)
-
-        svg3.append("text")
-            .attr("transform", "translate(0, " + (h / 2) + ") rotate(-90)")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Years of post-education experience");
-
-        svg3.append("text")
-            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Year");
-
-        // ##### PLOT 4 ###### //
-
-        var xScale_research = d3.scaleLinear()
-            .domain([d3.min(dataset, function(d) { return d.age_research }),
-                d3.max(dataset, function(d) { return d.age_research })
-            ])
-            .range([0 + padding, w - padding]),
-
-            xAxis_research = d3.axisBottom()
-            .scale(xScale_research)
-            .ticks(10),
-
-            yScale_prize = d3.scaleLinear()
-            .domain([d3.min(dataset, function(d) { return d.age_prize }),
-                d3.max(dataset, function(d) { return d.age_prize })
-            ])
-            .range([h - padding, 0 + padding]),
-
-            yAxis_prize = d3.axisLeft()
-            .scale(yScale_prize)
-
-        var plot4legend = makeLegend(svg4, ['Female', 'Male'], genderLegend)
-
-        svg4.append("g")
-            .attr("class", "x axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(0," + (h - padding) + ")")
-            .call(xAxis_research)
-
-        // Append Y Axis
-        svg4.append("g")
-            .attr("class", "y axis")
-            .style("font-family", "sans-serif")
-            .style("font-size", "0.8em")
-            .attr("transform", "translate(" + (padding) + ",0)")
-            .call(yAxis_prize)
-
-        svg4.append("text")
-            .attr("transform", "translate(0, " + (h / 2) + ") rotate(-90)")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Age at receiving prize");
-
-        svg4.append("text")
-            .attr("transform", "translate(" + (w / 2) + "," + (h - 25) + ")")
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "sans-serif")
-            .text("Age at conducting research");
-
-        svg4.selectAll("circle")
-            .data(dataset)
+        inc_circles = svg3.selectAll("circle")
+            .data(json.features)
             .enter()
             .append("circle")
-            .attr("cx", function(d) { return xScale_research(d.age_research) })
-            .attr("cy", function(d) { return yScale_prize(d.age_prize) })
-            .attr("r", 3)
-            .attr("fill", function(d) {
-                if (d.female == "1") { return "#fc8d59" }
-                if (d.female == "0") { return "#2c7fb8" }
+            .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+            .attr("cx", function(d) { return xScale(d.properties.PM25) })
+            .attr("r", 5)
+            .attr("fill", "gray")
+
+        inc_circles.on("mouseover", function(d) {
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .style("fill", "orange")
+              .attr("r", 10)
+
+            svg.selectAll("path")
+                .transition()
+                .duration(200)
+                .filter(function(l) { return d.properties.nbhd == l.properties.nbhd})
+                .style("fill", "orange")
+
+            var update_data = calc_data(d.properties)
+            update_poly = []
+            update_data.forEach(function(d, i) { 
+                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x += (h/2 + padding*3.1 - (radius *d))
+                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y += (h/2 + padding - (radius * d))
+                update_poly.push({ 'x' : x, 'y': y})
             })
-            .on("mouseover", function(d) {
-                svg4.selectAll("circle")
-                    .filter(function(dot) { return d.gender != dot.gender })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+            svg2.selectAll("circle")
+                .data(update_data)
+                .transition()
+                .duration(200)
+                .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
+                .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
+                .attr("r", 5)
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("fill", "black")
+                .attr("opacity", "0.8")
 
-                svg2.selectAll("circle")
-                    .filter(function(dot) { return d.gender != dot.gender })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
+            svg2.selectAll("polygon")
+                .data([update_poly])
+                .transition()
+                .duration(200)
+                .style("stroke", "black")
+                .style('fill', "gray")
+                .attr("points",function(l) { 
+                    return l.map(function(l) {
+                        return [l.x, l.y].join(",");
+                    }).join(" ")
+                })
+                .attr("opacity", 0.5)
+        })
 
-                svg4.selectAll(".legend-rect")
-                    .filter(function(dot) { return d.gender != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-                svg4.selectAll(".legend-text")
-                    .filter(function(dot) { return d.gender != dot })
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-
-
+        inc_circles.on("mouseout", function(d) {
+            svg3.selectAll("circle").style("fill", "gray").attr("r", 5)
+            svg4.selectAll("circle").style("fill", "gray").attr("r", 5)
+            svg.selectAll("path")
+            .transition()
+            .duration(300)
+            .style("fill", function(l) {
+                var value = l.properties.income;
+                    if (value) {
+                        return color(value);
+                    } else {
+                        return "#ccc";
+                    }
             })
-            .on("mouseout", function(d) {
-                d3.selectAll("circle")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+        })
 
-                d3.selectAll(".legend-rect")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+        // ***********************************
+        // ******** FOURTH PLOT **************
+        // ***********************************
+        
+        var pop_yScale = d3.scaleLinear()
+            .domain([0, 15e4])
+            .range([h - padding, 0 + padding])
 
+        var pop_xScale = makeXscale(json, 'PM25')
 
-                d3.selectAll(".legend-text")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
+        svg4.append("g")
+            .attr("class", "y-axis")
+            .style("font-family", "sans-serif")
+            .style("font-size", "0.75em")
+            .attr("transform", "translate(" + (padding + 40) + "," + 0 + ")")
+            .call(d3.axisLeft().scale(pop_yScale))
 
+        svg4.append("g")
+            .attr("class", "x-axis")
+            .style("font-family", "sans-serif")
+            .style("font-size", "0.75em")
+            .attr("transform", "translate(" + (0) + "," + (h - padding) + ")")
+            .call(d3.axisBottom().scale(pop_xScale))
+
+        pop_circles = svg4.selectAll("circle")
+            .data(json.features)
+            .enter()
+            .append("circle")
+            .attr("class", "inc-circles")
+            .attr("cy", function(d) { return pop_yScale(d.properties.population) })
+            .attr("cx", function(d) { return pop_xScale(d.properties.PM25) })
+            .attr("r", 5)
+            .attr("fill", "gray")
+
+        pop_circles.on("mouseover", function(d) {
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .style("fill", "orange")
+              .attr("r", 10)
+
+            svg.selectAll("path")
+                .transition()
+                .duration(200)
+                .filter(function(l) { return d.properties.nbhd == l.properties.nbhd})
+                .style("fill", "orange")
+
+            var update_data = calc_data(d.properties)
+            update_poly = []
+            update_data.forEach(function(d, i) { 
+                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x += (h/2 + padding*3.1 - (radius *d))
+                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y += (h/2 + padding - (radius * d))
+                update_poly.push({ 'x' : x, 'y': y})
             })
-    })
+            svg2.selectAll("circle")
+                .data(update_data)
+                .transition()
+                .duration(200)
+                .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
+                .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
+                .attr("r", 5)
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("fill", "black")
+                .attr("opacity", "0.8")
+
+            svg2.selectAll("polygon")
+                .data([update_poly])
+                .transition()
+                .duration(200)
+                .style("stroke", "black")
+                .style('fill', "gray")
+                .attr("points",function(l) { 
+                    return l.map(function(l) {
+                        return [l.x, l.y].join(",");
+                    }).join(" ")
+                })
+                .attr("opacity", 0.5)
+        })
+
+        pop_circles.on("mouseout", function(d) {
+            svg3.selectAll("circle").style("fill", "gray").attr("r", 5)
+            svg4.selectAll("circle").style("fill", "gray").attr("r", 5)
+            svg.selectAll("path")
+            .transition()
+            .duration(300)
+            .style("fill", function(l) {
+                var value = l.properties.income;
+                    if (value) {
+                        return color(value);
+                    } else {
+                        return "#ccc";
+                    }
+            })
+        })
+
+    });
     </script>
 </body>
 
