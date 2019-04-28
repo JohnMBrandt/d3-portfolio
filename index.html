@@ -15,6 +15,31 @@
     .grid-item {
         padding: 5px;
     }
+    #tooltip {
+        position: absolute;
+        width: auto;
+        height: auto;
+        padding: 5px;
+        background-color: white;
+        -webkit-border-radius: 3;
+        -moz-border-radius: 3;
+        border-radius: 3;
+        -webkit-box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+        -moz-box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+    }
+
+    #tooltip.hidden {
+        display: none;
+    }
+
+    #tooltip p {
+        margin: 0;
+        font-family: sans-serif;
+        font-size: 16px;
+        line-height: 16px;
+    }
     </style>
 </head>
 
@@ -25,7 +50,12 @@
         <div class='grid-item' id="Plot3"></div>
         <div class='grid-item' id='Plot4'></div>
     </div>
+    <div id="tooltip" class="hidden">
+        <p><span id="value"> </span></p>
+    </div>
     <script type="text/javascript">
+
+    var data_directory = "data/chicago.geojson"
     var w = 750;
     var h = 500;
     var padding = 40;
@@ -73,13 +103,6 @@
     var color = d3.scaleSequential(d3.interpolateViridis)
         .domain([0, 120000]);
 
-
-    var income_yScale = d3.scaleLinear()
-        .domain([0, 120000])
-        .range([h - padding, 0 + padding])
-
-    var income_yAxis = d3.axisLeft()
-        .scale(income_yScale)
 
     function makeXscale(data, name) {
         var min = d3.min(data.features, function(d) { return d.properties[name]; })
@@ -142,12 +165,7 @@
         .attr("width", w)
         .attr("height", h)
 
-    svg3.append("g")
-        .attr("class", "y-axis")
-        .style("font-family", "sans-serif")
-        .style("font-size", "0.75em")
-        .attr("transform", "translate(" + (padding + 40) + "," + 0 + ")")
-        .call(income_yAxis)
+    
 
     // Make legends
     makeLegend(svg, colorlegend, color)
@@ -164,8 +182,21 @@
     makeAxisTitles(svg4, "Population", "PM25")
 
 
-    d3.json("data/chicago.geojson", function(json) {
-        console.log(json.features[0].properties)
+    d3.json(data_directory, function(json) {
+
+        var income_yScale = d3.scaleLinear()
+            .domain([0, d3.max(json.features, function(d) { return d.properties['income'];})])
+            .range([h - padding, 0 + padding])
+
+        var income_yAxis = d3.axisLeft()
+            .scale(income_yScale)
+        
+        svg3.append("g")
+            .attr("class", "y-axis")
+            .style("font-family", "sans-serif")
+            .style("font-size", "0.75em")
+            .attr("transform", "translate(" + (padding + 40) + "," + 0 + ")")
+            .call(income_yAxis)
 
         var path = d3.geoPath()
             .projection(d3.geoAlbers()
@@ -191,9 +222,19 @@
         geos.on("mouseover", function(d) {
             d3.select(this)
                 .transition()
-                .duration(300)
+                .duration(150)
                 .style("fill", "orange")
 
+            var xPosition = 250;
+            var yPosition = 250;
+
+            d3.select("#tooltip")
+                    .style("left", (d3.event.pageX) + "px")   
+                    .style("top", (d3.event.pageY - 30) + "px")
+                    .select("#value")
+                    .text(d.properties.nbhd)
+
+            d3.select("#tooltip").classed("hidden", false)
 
             svg3.selectAll("circle")
                 .transition()
@@ -212,9 +253,9 @@
             var update_data = calc_data(d.properties)
             update_poly = []
             update_data.forEach(function(d, i) { 
-                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / total))
                 x += (h/2 + padding*3.1 - (radius *d))
-                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y = (radius * d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
             })
@@ -259,6 +300,7 @@
                     }
                 })
 
+            d3.select("#tooltip").classed("hidden", true)
             svg3.selectAll("circle").style("fill", "gray").attr("r", 5)
             svg4.selectAll("circle").style("fill", "gray").attr("r", 5)
         })
@@ -269,36 +311,40 @@
         // **********************************
 
         function calc_data(d) {
-            popmax = 11e4
-            incomemax = 1e5
-            PM25max = 14
-            NO2max = 7
-            TREECOVmax = 10e6
+            popmax = d3.max(json.features, function(d) { return d.properties['population']; })
+            incomemax = d3.max(json.features, function(d) { return d.properties['income']; })
+            PM25max = d3.max(json.features, function(d) { return d.properties['PM25']; })
+            NO2max = d3.max(json.features, function(d) { return d.properties['NO2']; })
+            TREECOVmax = d3.max(json.features, function(d) { return d.properties['TREECOV']; })
+            TRANSCOVmax = d3.max(json.features, function(d) { return d.properties['TRANSCOV']; })
+            UHImax = d3.max(json.features, function(d) { return d.properties['UHI']; })
             data = [d.population/popmax,
                     d.income/incomemax,
                     d.NO2/NO2max, d.PM25/PM25max, 
-                    d.TREECOV/TREECOVmax]
+                    d.TREECOV/TREECOVmax,
+                    d.TRANSCOV/TRANSCOVmax,
+                    d.UHI/UHImax]
             return data
         }
 
 
         var sample_data = calc_data(json.features[3].properties)
-        var alldata = [1, 1, 1, 1, 1, 1]
+        var alldata = [1, 1, 1, 1, 1, 1, 1, 1]
         var total = sample_data.length;
-        var radius = h/2
+        var radius = h/2 - 25
         var radians = 2 * Math.PI
 
         function calc_xy(value, i) {
-            x = (h/2 * value) * (1 - Math.sin(i * (2*Math.PI) / 5))
-            y = (h/2 * value) * (1 - Math.cos(i * (2*Math.PI) / 5))
+            x = (h/2 * value) * (1 - Math.sin(i * (2*Math.PI) / 7))
+            y = (h/2 * value) * (1 - Math.cos(i * (2*Math.PI) / 7))
             return [x, y]
         }
 
         polygonValues = []
         sample_data.forEach(function(d, i) { 
-            x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+            x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / 7))
             x += (h/2 + padding*3.1 - (radius *d))
-            y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+            y = (radius* d) * (1 - Math.cos(i * (2*Math.PI) / 7))
             y += (h/2 + padding - (radius * d))
             polygonValues.push({ 'x' : x, 'y': y})
         })
@@ -314,8 +360,8 @@
         radarAxis.append("line")
             .attr("x1", h/2)
             .attr("y1", h/2)
-            .attr("x2", function(d, i) { return h / 2 * (1 - Math.sin(i * radians/ total))})
-            .attr("y2", function(d, i) { return h / 2 * (1 - Math.cos(i * radians / total))})
+            .attr("x2", function(d, i) { return h / 2 * (1 - 0.9*Math.sin(i * radians/ total))})
+            .attr("y2", function(d, i) { return h / 2 * (1 - 0.9*Math.cos(i * radians / total))})
             .attr("class", "line")
             .style("stroke", "grey")
 
@@ -344,6 +390,7 @@
                     return [d.x, d.y].join(",");
                 }).join(" ")
             })
+            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*3.1 - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
             .attr("opacity", 0.5)
 
         svg2.selectAll("circle")
@@ -358,13 +405,13 @@
             .attr("opacity", "0.8")
 
         spider_text = svg2.selectAll(".label-text")
-            .data(['Population', 'Income', 'NO2', 'PM2.5', 'Tree cover'])
+            .data(['Population', 'Income', 'NO2', 'PM2.5', 'Tree cover', 'Public transit', 'UHI'])
             .enter()
             .append("text")
             .attr("class", "label-text")
             .attr("x", function(d, i) { return ( radius * (1 - Math.sin(i * radians / total)) )})
             .attr("y", function(d, i) { return ( radius * (1 - Math.cos(i * radians / total)) )})
-            .attr("transform", "translate(" + (h/2 + padding*3.3 - (radius)) + "," + (h/2 + padding - (radius)) + ")")
+            .attr("transform", "translate(" + (radius + padding*3.3 - (radius)) + "," + (radius + padding - (radius)) + ")")
             .text(function(d) { return d})
             .style("font-family", "sans-serif")
             .style("font-weight", function(d) { return d == 'PM2.5' ? "bold" : ""})
@@ -403,7 +450,7 @@
                     .data(json.features)
                     .transition()
                     .duration(600)
-                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cy", function(d) { return pop_yScale(d.properties.population) })
                     .attr("cx", function(d) { return xScale_update(d.properties.NO2) })
                     .attr("r", 5)
                     .attr("fill", "gray")
@@ -438,13 +485,85 @@
                     .data(json.features)
                     .transition()
                     .duration(600)
-                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cy", function(d) { return pop_yScale(d.properties.population) })
                     .attr("cx", function(d) { return xScale_update(d.properties.TREECOV) })
                     .attr("r", 5)
                     .attr("fill", "gray")
 
                 svg4.selectAll(".x-axis-title")
                 .text("Tree cover")
+
+                svg4.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+            } else if (d == "UHI") {
+                var xScale_update = makeXscale(json, 'UHI')
+                svg3.selectAll("circle")
+                    .data(json.features)
+                    .transition()
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.UHI) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
+
+                svg3.selectAll(".x-axis-title")
+                .text("Urban Heat Island")
+
+                svg3.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+                svg4.selectAll("circle")
+                    .data(json.features)
+                    .transition()
+                    .duration(600)
+                    .attr("cy", function(d) { return pop_yScale(d.properties.population) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.UHI) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
+
+                svg4.selectAll(".x-axis-title")
+                .text("Urban Heat Island")
+
+                svg4.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+            } else if (d == "Public transit") {
+                var xScale_update = makeXscale(json, 'TRANSCOV')
+                svg3.selectAll("circle")
+                    .data(json.features)
+                    .transition()
+                    .duration(600)
+                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.TRANSCOV) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
+
+                svg3.selectAll(".x-axis-title")
+                .text("Public Transit")
+
+                svg3.selectAll(".x-axis")
+                .transition()
+                .duration(600)
+                .call(d3.axisBottom().scale(xScale_update))
+
+                svg4.selectAll("circle")
+                    .data(json.features)
+                    .transition()
+                    .duration(600)
+                    .attr("cy", function(d) { return pop_yScale(d.properties.population) })
+                    .attr("cx", function(d) { return xScale_update(d.properties.TRANSCOV) })
+                    .attr("r", 5)
+                    .attr("fill", "gray")
+
+                svg4.selectAll(".x-axis-title")
+                .text("Public Transit")
 
                 svg4.selectAll(".x-axis")
                 .transition()
@@ -474,7 +593,7 @@
                     .data(json.features)
                     .transition()
                     .duration(600)
-                    .attr("cy", function(d) { return income_yScale(d.properties.income_std) })
+                    .attr("cy", function(d) { return pop_yScale(d.properties.population) })
                     .attr("cx", function(d) { return xScale_update(d.properties.PM25) })
                     .attr("r", 5)
                     .attr("fill", "gray")
@@ -527,9 +646,9 @@
             var update_data = calc_data(d.properties)
             update_poly = []
             update_data.forEach(function(d, i) { 
-                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x = (radius* d) * (1 - Math.sin(i * (2*Math.PI) / total))
                 x += (h/2 + padding*3.1 - (radius *d))
-                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y = (radius* d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
             })
@@ -579,7 +698,7 @@
         // ***********************************
         
         var pop_yScale = d3.scaleLinear()
-            .domain([0, 15e4])
+            .domain([0, d3.max(json.features, function(d) { return d.properties['population']})])
             .range([h - padding, 0 + padding])
 
         var pop_xScale = makeXscale(json, 'PM25')
@@ -624,9 +743,9 @@
             var update_data = calc_data(d.properties)
             update_poly = []
             update_data.forEach(function(d, i) { 
-                x = (h/2 * d) * (1 - Math.sin(i * (2*Math.PI) / total))
+                x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / total))
                 x += (h/2 + padding*3.1 - (radius *d))
-                y = (h/2 * d) * (1 - Math.cos(i * (2*Math.PI) / total))
+                y = (radius * d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
             })
