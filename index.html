@@ -8,7 +8,7 @@
     <style type="text/css">
     .grid-container {
         display: grid;
-        grid-template-columns: auto auto;
+        grid-template-columns: 600px 600px;
         padding: 5px;
     }
 
@@ -56,9 +56,10 @@
     <script type="text/javascript">
 
     var data_directory = "data/chicago.geojson"
-    var w = 750;
-    var h = 500;
+    var w = 600;
+    var h = 400;
     var padding = 40;
+    var spider_ratio = 2.5
 
     function makeTitle(svg, name, subtitle) {
         svg.append("text")
@@ -254,7 +255,7 @@
             update_poly = []
             update_data.forEach(function(d, i) { 
                 x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / total))
-                x += (h/2 + padding*3.1 - (radius *d))
+                x += (h/2 + padding*spider_ratio - (radius *d))
                 y = (radius * d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
@@ -266,7 +267,7 @@
                 .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
                 .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
                 .attr("r", 5)
-                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*spider_ratio - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
                 .attr("fill", "black")
                 .attr("opacity", "0.8")
 
@@ -343,7 +344,7 @@
         polygonValues = []
         sample_data.forEach(function(d, i) { 
             x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / 7))
-            x += (h/2 + padding*3.1 - (radius *d))
+            x += (h/2 + padding*spider_ratio - (radius *d))
             y = (radius* d) * (1 - Math.cos(i * (2*Math.PI) / 7))
             y += (h/2 + padding - (radius * d))
             polygonValues.push({ 'x' : x, 'y': y})
@@ -390,7 +391,7 @@
                     return [d.x, d.y].join(",");
                 }).join(" ")
             })
-            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*3.1 - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
+            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*spider_ratio - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
             .attr("opacity", 0.5)
 
         svg2.selectAll("circle")
@@ -400,7 +401,7 @@
             .attr("cx", function(d, i) { return ( (radius * d) * (1 - Math.sin(i * radians / total)) )})
             .attr("cy", function(d, i) { return ( (radius * d) * (1 - Math.cos(i * radians / total)) )})
             .attr("r", 5)
-            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*3.1 - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
+            .attr("transform", function(d) { return ("translate(" + (h/2 + padding*spider_ratio - (radius * d)) + "," + (h/2 + padding - (radius * d)) + ")") })
             .attr("fill", "black")
             .attr("opacity", "0.8")
 
@@ -411,7 +412,7 @@
             .attr("class", "label-text")
             .attr("x", function(d, i) { return ( radius * (1 - Math.sin(i * radians / total)) )})
             .attr("y", function(d, i) { return ( radius * (1 - Math.cos(i * radians / total)) )})
-            .attr("transform", "translate(" + (radius + padding*3.3 - (radius)) + "," + (radius + padding - (radius)) + ")")
+            .attr("transform", "translate(" + (radius + (padding*spider_ratio + 0.2) - (radius)) + "," + (radius + padding - (radius)) + ")")
             .text(function(d) { return d})
             .style("font-family", "sans-serif")
             .style("font-weight", function(d) { return d == 'PM2.5' ? "bold" : ""})
@@ -647,7 +648,7 @@
             update_poly = []
             update_data.forEach(function(d, i) { 
                 x = (radius* d) * (1 - Math.sin(i * (2*Math.PI) / total))
-                x += (h/2 + padding*3.1 - (radius *d))
+                x += (h/2 + padding*spider_ratio - (radius *d))
                 y = (radius* d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
@@ -659,7 +660,7 @@
                 .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
                 .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
                 .attr("r", 5)
-                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*spider_ratio - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
                 .attr("fill", "black")
                 .attr("opacity", "0.8")
 
@@ -744,7 +745,7 @@
             update_poly = []
             update_data.forEach(function(d, i) { 
                 x = (radius * d) * (1 - Math.sin(i * (2*Math.PI) / total))
-                x += (h/2 + padding*3.1 - (radius *d))
+                x += (h/2 + padding*spider_ratio - (radius *d))
                 y = (radius * d) * (1 - Math.cos(i * (2*Math.PI) / total))
                 y += (h/2 + padding - (radius * d))
                 update_poly.push({ 'x' : x, 'y': y})
@@ -756,7 +757,7 @@
                 .attr("cx", function(l, i) { return ( (radius * l) * (1 - Math.sin(i * radians / total)) )})
                 .attr("cy", function(l, i) { return ( (radius * l) * (1 - Math.cos(i * radians / total)) )})
                 .attr("r", 5)
-                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*3.1 - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
+                .attr("transform", function(l) { return ("translate(" + (h/2 + padding*spider_ratio - (radius * l)) + "," + (h/2 + padding - (radius * l)) + ")") })
                 .attr("fill", "black")
                 .attr("opacity", "0.8")
 
